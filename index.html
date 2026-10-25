@@ -368,7 +368,7 @@ function currentDir() {
 }
 
 // ---------- 游戏状态 ----------
-let state = "menu";           // menu | playing | paused | transition | gameover
+let state = "menu";           // menu | playing | paused | levelclear | gameover
 let score = 0, lives = 4, level = 1;
 let grid = [];
 let player = null;
@@ -378,10 +378,10 @@ let powerUps = [];
 let particles = [];
 let explosions = [];
 let remainingToSpawn = 0;
+let levelStartScore = 0;
 let maxAlive = 3;
 let spawnTimer = 0;
 let powerTimer = 8;
-let transitionTimer = 0;
 let shake = 0;
 let baseAlive = true;
 let lastTime = 0;
@@ -732,6 +732,7 @@ function startGame() {
 
 function startLevel(n) {
   level = n;
+  levelStartScore = score;
   parseMap();
   enemies = [];
   bullets = [];
@@ -753,21 +754,37 @@ function startLevel(n) {
 function endGame(title) {
   state = "gameover";
   overlayTitle.textContent = title;
-  overlaySub.innerHTML = "最终得分：<span class='sub'>" + score + "</span><br>按 Enter 或点击按钮重新开始";
-  startBtn.textContent = "重新开始";
+  overlaySub.innerHTML = "本关得分：<span class='sub'>" + score + "</span><br>按 Enter 或点击按钮从第 " + level + " 关重来";
+  startBtn.textContent = "重试本关";
+  startBtn.style.display = "";
   overlay.classList.remove("hidden");
   Sfx.gameover();
 }
 
 function levelComplete() {
-  state = "transition";
-  transitionTimer = 2.5;
+  state = "levelclear";
   overlayTitle.textContent = "第 " + level + " 关 完成！";
-  overlaySub.innerHTML = "得分：<span class='sub'>" + score + "</span><br>准备进入下一关……";
-  startBtn.textContent = "继续";
-  startBtn.style.display = "none";
+  overlaySub.innerHTML = "得分：<span class='sub'>" + score + "</span><br>按 Enter 进入第 " + (level + 1) + " 关";
+  startBtn.textContent = "进入下一关（Enter）";
+  startBtn.style.display = "";
   overlay.classList.remove("hidden");
   Sfx.levelup();
+}
+
+function nextLevel() {
+  state = "playing";
+  overlay.classList.add("hidden");
+  startBtn.style.display = "";
+  startLevel(level + 1);
+}
+
+function retryLevel() {
+  score = levelStartScore;
+  lives = 4;
+  if (player) player.level = 0;
+  state = "playing";
+  overlay.classList.add("hidden");
+  startLevel(level);
 }
 
 function togglePause() {
@@ -797,17 +814,6 @@ function updateHUD() {
 
 // ---------- 更新 ----------
 function update(dt) {
-  if (state === "transition") {
-    transitionTimer -= dt;
-    if (transitionTimer <= 0) {
-      overlay.classList.add("hidden");
-      startBtn.style.display = "";
-      startLevel(level + 1);
-      state = "playing";
-    }
-    return;
-  }
-
   shake = Math.max(0, shake - dt * 20);
 
   // 生成敌人
@@ -1095,7 +1101,6 @@ function loop(ts) {
   const dt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
   if (state === "playing") update(dt);
-  else if (state === "transition") update(dt);
   render();
   requestAnimationFrame(loop);
 }
@@ -1114,10 +1119,16 @@ window.addEventListener("keydown", (e) => {
   else if (c === "ArrowRight" || c === "KeyD") input.right = true;
   else if (SHOOT_KEYS.includes(c)) {
     input.shoot = true;
-    if (edge && (state === "menu" || state === "gameover")) startGame();
+    if (edge) {
+      if (state === "menu") startGame();
+      else if (state === "gameover") retryLevel();
+      else if (state === "levelclear") nextLevel();
+    }
   } else if (edge) {
     if (c === "Enter") {
-      if (state === "menu" || state === "gameover") startGame();
+      if (state === "menu") startGame();
+      else if (state === "gameover") retryLevel();
+      else if (state === "levelclear") nextLevel();
     } else if (c === "KeyP" || c === "Escape") {
       if (state === "playing" || state === "paused") togglePause();
     } else if (c === "KeyM") {
@@ -1155,7 +1166,9 @@ bindTouch(fireBtn, "shoot");
 
 startBtn.addEventListener("click", () => {
   Sfx.ensure();
-  if (state === "menu" || state === "gameover") startGame();
+  if (state === "menu") startGame();
+  else if (state === "gameover") retryLevel();
+  else if (state === "levelclear") nextLevel();
 });
 
 // ---------- 启动 ----------
