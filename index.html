@@ -996,7 +996,7 @@ function render() {
   for (const pu of powerUps) drawPowerUp(pu);
 
   // 玩家
-  if (player.alive) {
+  if (player && player.alive) {
     const blink = player.invuln > 0 && (Math.floor(player.invuln * 10) % 2 === 0);
     if (!blink) {
       drawTank(player.px, player.py, player.dir, "#f3c531", "#8a6d1a", false);
