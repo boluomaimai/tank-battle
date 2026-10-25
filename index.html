@@ -733,6 +733,7 @@ function startGame() {
 function startLevel(n) {
   level = n;
   levelStartScore = score;
+  lives = 4; // 每关开始满血
   parseMap();
   enemies = [];
   bullets = [];
