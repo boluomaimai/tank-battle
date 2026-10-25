@@ -123,6 +123,38 @@
     user-select: none;
   }
   .hint b { color: #a9a9c0; }
+  .legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    font-size: 13px;
+    color: #c8c8d8;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 12px;
+  }
+  .legend i { font-style: normal; font-weight: bold; }
+  .toast {
+    position: absolute;
+    left: 50%;
+    top: 12%;
+    transform: translate(-50%, 0);
+    background: rgba(18,18,28,.92);
+    border: 1px solid var(--accent2);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .25s ease, top .25s ease;
+    z-index: 6;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; top: 16%; }
   .touch-pad {
     display: none;
     margin-top: 12px;
@@ -174,11 +206,17 @@
 
     <div class="stage">
       <canvas id="game" width="480" height="480"></canvas>
+      <div class="toast" id="toast"></div>
       <div class="overlay" id="overlay">
         <h2 id="overlayTitle">坦克大战</h2>
         <p id="overlaySub">守护你的基地，消灭所有敌军！<br>
           <span class="sub">方向键 / WASD 移动 · 空格 / J 射击</span>
         </p>
+        <div class="legend">
+          <span><i style="color:#f3c531">★</i> 火力升级</span>
+          <span><i style="color:#4cd97b">♥</i> 生命 +1</span>
+          <span><i style="color:#4dd0e1">盾</i> 护盾（6秒无敌）</span>
+        </div>
         <button class="btn" id="startBtn">开始游戏</button>
       </div>
     </div>
@@ -195,7 +233,7 @@
 
     <div class="hint">
       按 <b>P</b> 暂停 · 按 <b>M</b> 静音 · 按 <b>Enter</b> 开始/重新开始<br>
-      ⭐ 升级火力 · ♥ 增加生命 · ◉ 无敌护盾
+      ⭐ 火力升级 · ♥ 生命+1 · <span style="color:#4dd0e1">盾</span> 护盾（蓝色圆点，6秒无敌）
     </div>
   </div>
 
@@ -272,6 +310,14 @@ const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlayTitle");
 const overlaySub = document.getElementById("overlaySub");
 const startBtn = document.getElementById("startBtn");
+const toast = document.getElementById("toast");
+let toastTimer = null;
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+}
 
 // ---------- 音效 ----------
 const Sfx = {
@@ -535,8 +581,8 @@ function killBullet(b) {
 // ---------- 道具 ----------
 const POWER_TYPES = {
   star: { color: "#f3c531", label: "★" },
-  life: { color: "#4cd97b", label: "+" },
-  shield: { color: "#4dd0e1", label: "◉" },
+  life: { color: "#4cd97b", label: "♥" },
+  shield: { color: "#4dd0e1", label: "盾" },
 };
 
 class PowerUp {
@@ -569,10 +615,13 @@ function applyPowerUp(pu) {
   Sfx.powerup();
   if (pu.type === "star") {
     player.setLevel(player.level + 1);
+    showToast(player.level >= 2 ? "★ 火力满级！可击碎钢墙" : "★ 火力升级！");
   } else if (pu.type === "life") {
     lives = Math.min(5, lives + 1);
+    showToast("♥ 生命 +1");
   } else if (pu.type === "shield") {
     player.shieldTimer = 6;
+    showToast("盾 护盾：6 秒无敌");
   }
   pu.life = 0;
   updateHUD();
